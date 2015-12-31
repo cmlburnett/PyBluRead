@@ -5,7 +5,7 @@
 #include "structmember.h"
 
 
-#include <libbluray/bluray.h>
+#include <bluray.h>
 
 #include <string.h>
 
