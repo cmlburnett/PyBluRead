@@ -71,6 +71,11 @@ class Title(_bluread.Title):
 		return TicksToFancy(self.Length)
 
 class Chapter(_bluread.Chapter):
+	"""
+	Represents a chaper which belongs to a title.
+	Chapters reference a clip, which contains all of the media data.
+	"""
+
 	def __init__(self, TITLE, Num):
 		_bluread.Chapter.__init__(self, TITLE, Num)
 
@@ -91,10 +96,21 @@ class Chapter(_bluread.Chapter):
 		return TicksToFancy(self.End)
 
 class Clip(_bluread.Clip):
+	"""
+	A title consists of 1+ clips and 1+ chapters.
+	Each chapter references a clip.
+	Each clip contains video, audio, interactive graphics (aka menus), and presentation graphics (aka subtitles).
+	"""
+
 	def __init__(self, Title, Num):
 		_bluread.Clip.__init__(self, Title, Num, Subtitle)
 
 class Subtitle(_bluread.Subtitle):
+	"""
+	Presentation graphic streams are suggested to be used for subtitles (i.e., non-interactive overlay graphics).
+	PG streams are just assumed to be subtitles in this module.
+	"""
+
 	def __init__(self, Clip, Num):
 		_bluread.Subtitle.__init__(self, Clip, Num)
 
