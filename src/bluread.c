@@ -162,6 +162,50 @@ Bluray_getKeyDB(Bluray *self)
 }
 
 static PyObject*
+Bluray_getVolumeId(Bluray *self)
+{
+	if (! _Bluray_getIsOpen(self))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyUnicode_FromString(self->info->udf_volume_id);
+}
+
+static PyObject*
+Bluray_getDiscId(Bluray *self)
+{
+	if (! _Bluray_getIsOpen(self))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	char discid[34];
+	strncpy(discid, self->info->bdj_disc_id, 33);
+	discid[33] = '\0';
+
+	return PyUnicode_FromString(discid);
+}
+
+static PyObject*
+Bluray_getOrgId(Bluray *self)
+{
+	if (! _Bluray_getIsOpen(self))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	char orgid[10];
+	strncpy(orgid, self->info->bdj_disc_id, 9);
+	orgid[9] = '\0';
+
+	return PyUnicode_FromString(orgid);
+}
+
+static PyObject*
 Bluray_getNumberOfTitles(Bluray *self)
 {
 	if (! _Bluray_getIsOpen(self))
@@ -343,6 +387,9 @@ static PyGetSetDef Bluray_getseters[] = {
 	{"IsOpen", (getter)Bluray_getIsOpen, NULL, "Gets flag indicating if device is open or not", NULL},
 	{"Path", (getter)Bluray_getPath, NULL, "Get the path to the Bluray device", NULL},
 	{"KeyDB", (getter)Bluray_getKeyDB, NULL, "Get the path to the KEYDB.cfg file", NULL},
+	{"VolumeId", (getter)Bluray_getVolumeId, NULL, "Gets the volume ID for the UDF partition", NULL},
+	{"DiscId", (getter)Bluray_getDiscId, NULL, "Gets the disc ID", NULL},
+	{"OrgId", (getter)Bluray_getOrgId, NULL, "Gets the organization ID", NULL},
 	{"MainTitleNumber", (getter)Bluray_getMainTitleNumber, NULL, "Gets the main title number of the disc", NULL},
 	{"NumberOfTitles", (getter)Bluray_getNumberOfTitles, NULL, "Gets the number of titles on this disc", NULL},
 	{NULL}
