@@ -16,7 +16,6 @@ from .objects import Bluray, Title
 from crudexml import node,tnode
 
 def BRToXML(device, KEYDB, pretty=True):
-
 	with Bluray(device, KEYDB) as b:
 		b.Open()
 
@@ -43,9 +42,21 @@ def BRToXML(device, KEYDB, pretty=True):
 				chapter.AddChild( tnode('start', c.Start, fancy=c.StartFancy) )
 				chapter.AddChild( tnode('end', c.End, fancy=c.EndFancy) )
 				chapter.AddChild( tnode('length', c.Length, fancy=c.LengthFancy) )
+				chapter.AddChild( tnode('clipnum', c.ClipNum) )
 
 
 			clips = title.AddChild( node('clips', num=t.NumberOfClips) )
+			for cnum in range(t.NumberOfClips):
+				c = t.GetClip(cnum)
+
+				clip = clips.AddChild( node('clip', num=c.Num) )
+
+				subs = clip.AddChild( node('subtitles', num=c.NumberOfSubtitles) )
+				for snum in range(c.NumberOfSubtitles):
+					s = c.GetSubtitle(snum)
+
+					sub = sub.AddChild( node('subtitle', num=s.Num) )
+					sub.AddChild( tnode('Language', s.Language) )
 
 
 

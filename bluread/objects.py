@@ -64,7 +64,7 @@ class Bluray(_bluread.Bluray):
 
 class Title(_bluread.Title):
 	def __init__(self, BR, Num):
-		_bluread.Title.__init__(self, BR, Num, Chapter)
+		_bluread.Title.__init__(self, BR, Num, Chapter,Clip)
 
 	@property
 	def LengthFancy(self):
@@ -89,4 +89,12 @@ class Chapter(_bluread.Chapter):
 	@property
 	def EndFancy(self):
 		return TicksToFancy(self.End)
+
+class Clip(_bluread.Clip):
+	def __init__(self, Title, Num):
+		_bluread.Clip.__init__(self, Title, Num, Subtitle)
+
+class Subtitle(_bluread.Subtitle):
+	def __init__(self, Clip, Num):
+		_bluread.Subtitle.__init__(self, Clip, Num)
 
