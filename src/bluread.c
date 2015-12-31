@@ -25,11 +25,23 @@ typedef struct {
 
 	BLURAY_TITLE_INFO *info;
 
+	PyObject* ChapterClass;
+
 } Title;
+
+typedef struct {
+	PyObject_HEAD
+	int chapternum;
+
+	Title *title;
+
+	BLURAY_TITLE_CHAPTER *info;
+} Chapter;
 
 // Predefine them so they can be used below since their full definition references the functions below
 static PyTypeObject BlurayType;
 static PyTypeObject TitleType;
+static PyTypeObject ChapterType;
 
 // --------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------
@@ -277,7 +289,7 @@ Bluray_Close(Bluray *self)
 }
 
 static PyObject*
-Bluray_GetTitle(Bluray *self, PyObject *args)
+Bluray_GetTitle(Bluray *self, PyObject *args, PyObject *kwds)
 {
 	if (! _Bluray_getIsOpen(self))
 	{
@@ -286,8 +298,9 @@ Bluray_GetTitle(Bluray *self, PyObject *args)
 	}
 
 	int num=0;
+	static char *kwlist[] = {"Num", NULL};
 
-	if (! PyArg_ParseTuple(args, "i", &num))
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "i", kwlist, &num))
 	{
 		return NULL;
 	}
@@ -322,7 +335,7 @@ static PyMemberDef Bluray_members[] = {
 static PyMethodDef Bluray_methods[] = {
 	{"Open", (PyCFunction)Bluray_Open, METH_NOARGS, "Opens the device for reading"},
 	{"Close", (PyCFunction)Bluray_Close, METH_NOARGS, "Closes the device"},
-	{"GetTitle", (PyCFunction)Bluray_GetTitle, METH_VARARGS, "Gets title information"},
+	{"GetTitle", (PyCFunction)Bluray_GetTitle, METH_VARARGS|METH_KEYWORDS, "Gets title information"},
 	{NULL}
 };
 
@@ -358,11 +371,11 @@ Title_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 Title_init(Title *self, PyObject *args, PyObject *kwds)
 {
-	PyObject *br=NULL, *tmp=NULL;
+	PyObject *br=NULL, *chapterclass=NULL, *tmp=NULL;
 	int num=0;
-	static char *kwlist[] = {"br", "num", NULL};
+	static char *kwlist[] = {"BR", "Num", "ChapterClass", NULL};
 
-	if (! PyArg_ParseTupleAndKeywords(args,kwds, "Oi", kwlist, &br, &num))
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "OiO", kwlist, &br, &num, &chapterclass))
 	{
 		return -1;
 	}
@@ -373,6 +386,13 @@ Title_init(Title *self, PyObject *args, PyObject *kwds)
 	Py_INCREF(br);
 	Py_CLEAR(tmp);
 
+	// chapterclass
+	tmp = self->ChapterClass;
+	self->ChapterClass = chapterclass;
+	Py_INCREF(chapterclass);
+	Py_CLEAR(tmp);
+
+	// titlenum
 	self->titlenum = num;
 
 	// Get title information for angle 0
@@ -427,7 +447,7 @@ Title_getLength(Title *self)
 		return NULL;
 	}
 
-	return PyLong_FromLong((long)self->info->duration);
+	return PyLong_FromLong(self->info->duration);
 }
 
 static PyObject*
@@ -467,13 +487,51 @@ Title_getNumberOfClips(Title *self)
 }
 
 
+static PyObject*
+Title_GetChapter(Title *self, PyObject *args, PyObject *kwds)
+{
+	if (! _Bluray_getIsOpen(self->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	int num=0;
+	static char *kwlist[] = {"Num", NULL};
+
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "i", kwlist, &num))
+	{
+		return NULL;
+	}
+
+	if (num < 1)
+	{
+		PyErr_Format(PyExc_Exception, "Chapter number (%d) must be positive", num);
+		return NULL;
+	}
+	if (num > self->info->chapter_count)
+	{
+		PyErr_Format(PyExc_Exception, "Chapter number (%d) must be positive but it exceeds the number (%d) of available titles", num,self->info->chapter_count);
+		return NULL;
+	}
+
+	PyObject *a = Py_BuildValue("Oi", self, num);
+	if (a == NULL)
+	{
+		return NULL;
+	}
+
+	return PyObject_CallObject(self->ChapterClass, a);
+}
+
+
 static PyMemberDef Title_members[] = {
 	{"_num", T_OBJECT_EX, offsetof(Title, titlenum), 0, "Title number"},
 	{NULL}
 };
 
 static PyMethodDef Title_methods[] = {
-	//{"Open", (PyCFunction)Title_Open, METH_NOARGS, "Opens the device for reading"},
+	{"GetChapter", (PyCFunction)Title_GetChapter, METH_VARARGS|METH_KEYWORDS, "Gets the specified chapter for this title"},
 	{NULL}
 };
 
@@ -486,7 +544,141 @@ static PyGetSetDef Title_getseters[] = {
 	{NULL}
 };
 
+// --------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------
+// Administrative functions for Chapter
 
+static PyObject*
+Chapter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+	Chapter *self;
+
+	self = (Chapter*)type->tp_alloc(type, 0);
+	if (self)
+	{
+		self->title = NULL;
+		self->info = NULL;
+		self->chapternum = 0;
+	}
+
+	return (PyObject*)self;
+}
+
+static int
+Chapter_init(Chapter *self, PyObject *args, PyObject *kwds)
+{
+	PyObject *title=NULL, *tmp=NULL;
+	int num=0;
+	static char *kwlist[] = {"title", "num", NULL};
+
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "Oi", kwlist, &title, &num))
+	{
+		return -1;
+	}
+
+	Title *t = (Title*)title;
+
+	// Get title information for angle 0
+	BLURAY_TITLE_INFO *tinfo = t->info;
+
+
+	if (num < 0)
+	{
+		PyErr_Format(PyExc_Exception, "Chapter number (%d) must be non-negative", num);
+		return -1;
+	}
+	if (num > tinfo->chapter_count)
+	{
+		PyErr_Format(PyExc_Exception, "Chapter number (%d) must be non-negative but it exceeds the number (%d) of available chapters", num,tinfo->chapter_count);
+		return -1;
+	}
+
+	// title
+	tmp = (PyObject*)self->title;
+	self->title = t;
+	Py_INCREF(title);
+	Py_CLEAR(tmp);
+
+	self->chapternum = num;
+
+	// Get chapter information
+	self->info = &tinfo->chapters[num-1];
+
+	return 0;
+}
+
+static void
+Chapter_dealloc(Chapter *self)
+{
+	if (self->info)
+	{
+		// Nothing to do, it's a part of title info
+	}
+	self->info = NULL;
+
+	self->chapternum = 0;
+	Py_CLEAR(self->title);
+
+	Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+// --------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------
+// Interface stuff for Chapter
+
+static PyObject*
+Chapter_getNum(Chapter *self)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->chapternum);
+}
+
+static PyObject*
+Chapter_getStart(Chapter *self)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->info->start);
+}
+
+static PyObject*
+Chapter_getLength(Chapter *self)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->info->duration);
+}
+
+
+static PyMemberDef Chapter_members[] = {
+	{"_num", T_OBJECT_EX, offsetof(Chapter, chapternum), 0, "Chapter number"},
+	{NULL}
+};
+
+static PyMethodDef Chapter_methods[] = {
+	//{"Open", (PyCFunction)Chapter_Open, METH_NOARGS, "Opens the device for reading"},
+	{NULL}
+};
+
+static PyGetSetDef Chapter_getseters[] = {
+	{"Num", (getter)Chapter_getNum, NULL, "Get the title number of this title", NULL},
+	{"Start", (getter)Chapter_getStart, NULL, "Get the start time of this chapter", NULL},
+	{"Length", (getter)Chapter_getLength, NULL, "Get the length of this chapter", NULL},
+	{NULL}
+};
 
 // --------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------
@@ -574,6 +766,47 @@ static PyTypeObject TitleType = {
 	Title_new,                 /* tp_new */
 };
 
+static PyTypeObject ChapterType = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	"_bluread.Chapter",        /* tp_name */
+	sizeof(Chapter),           /* tp_basicsize */
+	0,                         /* tp_itemsize */
+	(destructor)Chapter_dealloc, /* tp_dealloc */
+	0,                         /* tp_print */
+	0,                         /* tp_getattr */
+	0,                         /* tp_setattr */
+	0,                         /* tp_reserved */
+	0,                         /* tp_repr */
+	0,                         /* tp_as_number */
+	0,                         /* tp_as_sequence */
+	0,                         /* tp_as_mapping */
+	0,                         /* tp_hash  */
+	0,                         /* tp_call */
+	0,                         /* tp_str */
+	0,                         /* tp_getattro */
+	0,                         /* tp_setattro */
+	0,                         /* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE,        /* tp_flags */
+	"Represents a BLURAY from libbluray",          /* tp_doc */
+	0,                         /* tp_traverse */
+	0,                         /* tp_clear */
+	0,                         /* tp_richcompare */
+	0,                         /* tp_weaklistoffset */
+	0,                         /* tp_iter */
+	0,                         /* tp_iternext */
+	Chapter_methods,           /* tp_methods */
+	Chapter_members,           /* tp_members */
+	Chapter_getseters,         /* tp_getset */
+	0,                         /* tp_base */
+	0,                         /* tp_dict */
+	0,                         /* tp_descr_get */
+	0,                         /* tp_descr_set */
+	0,                         /* tp_dictoffset */
+	(initproc)Chapter_init,    /* tp_init */
+	0,                         /* tp_alloc */
+	Chapter_new,               /* tp_new */
+};
+
 // --------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------
 // Define the module
@@ -596,6 +829,7 @@ PyInit__bluread(void)
 	// Ready the types
 	if(PyType_Ready(&BlurayType) < 0) { return NULL; }
 	if(PyType_Ready(&TitleType) < 0) { return NULL; }
+	if(PyType_Ready(&ChapterType) < 0) { return NULL; }
 
 	// Create the module defined in the struct above
 	PyObject *m = PyModule_Create(&BluReadModule);
@@ -612,6 +846,7 @@ PyInit__bluread(void)
 	Py_INCREF(&BlurayType);
 	PyModule_AddObject(m, "Bluray", (PyObject*)&BlurayType);
 	PyModule_AddObject(m, "Title", (PyObject*)&TitleType);
+	PyModule_AddObject(m, "Chapter", (PyObject*)&ChapterType);
 	PyModule_AddStringConstant(m, "Version", v);
 
 	return m;

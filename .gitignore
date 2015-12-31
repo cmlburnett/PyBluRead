@@ -2,6 +2,8 @@
 *.pyo
 *.swp
 *.swo
+*.swn
+*.swm
 
 build/
 .AppleDouble/
