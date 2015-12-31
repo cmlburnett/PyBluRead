@@ -1,0 +1,49 @@
+PyBluRead -- A wrapper library around libbluray
+
+This Python module wraps libbluray to provide Python access to BR structural information.
+This does not fully wrap libbluray as my needs are not that extensive.
+
+Please note that this module uses libbluray to directly access a DVD disc if the device path is provided.
+This means that execution speed will depend on disc access, which can be slow. Just be aware of this.
+
+---------
+:Install:
+---------
+
+	python3 setup.py build
+	python3 setup.py install
+
+---------------
+:Documentation:
+---------------
+
+Use Python's online help to get the documentation from the classes.
+
+	$ python3
+	>>> import bluread
+	>>> help(bluread)
+
+	class Bluray(_bluread.Bluray)
+	 |  Entry object into parsing Bluray structure.
+	 |  Pass the device path to the init function, and then call Open() to initiate reading.
+	 |  Also, provide a path to KEYDB.cfg file if you feel so inclined (which is passed through libbluray as libbluray does not decrypt).
+	 |  
+	 |  A Bluray has titles.
+	 |  A Title has chapters.
+	 |  
+	 |  Method resolution order:
+	 |      Bluray
+	 |      _bluread.Bluray
+	 |      builtins.object
+	.................
+
+
+-------
+:Usage:
+-------
+
+A simple script is needed to parse the structure of a BR:
+
+
+
+

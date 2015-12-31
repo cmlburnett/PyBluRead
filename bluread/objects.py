@@ -1,9 +1,17 @@
+"""
+Python objects that wrap C API objects.
+"""
 
 import _bluread
 
 import os
 
 def TicksToFancy(l):
+	"""
+	Convert 64-bit bluray ticks into clock time.
+	There is a conversion constant of 90000 that I am unable to find good documentation for.
+	That said, the resulting times match what other programs tell me so it must be legit.
+	"""
 	# I can't find any good documentation on why duration is in 90,000th's of a second
 	total = l / 45000 / 2
 
@@ -26,7 +34,16 @@ def TicksToFancy(l):
 
 
 class Bluray(_bluread.Bluray):
-	def __init__(self, Path, KEYDB):
+	"""
+	Entry object into parsing Bluray structure.
+	Pass the device path to the init function, and then call Open() to initiate reading.
+	Also, provide a path to KEYDB.cfg file if you feel so inclined (which is passed through libbluray as libbluray does not decrypt).
+	
+	A Bluray has titles.
+	A Title has chapters.
+	"""
+
+	def __init__(self, Path, KEYDB=None):
 		if type(KEYDB) ==  str and not os.path.exists(KEYDB):
 			raise ValueError("KEYDB.cfg path '%s' does not exist" % KEYDB)
 
