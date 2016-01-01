@@ -103,7 +103,95 @@ class Clip(_bluread.Clip):
 	"""
 
 	def __init__(self, Title, Num):
-		_bluread.Clip.__init__(self, Title, Num, Subtitle)
+		_bluread.Clip.__init__(self, Title, Num, Video, Audio, Subtitle)
+
+class Video(_bluread.Video):
+	"""
+	Video stream.
+	"""
+
+	def __init__(self, Clip, Num):
+		_bluread.Video.__init__(self, Clip, Num)
+
+	@property
+	def CodingType(self):
+		x = self._CodingType
+		if x == 1:			return "MPEG1"
+		elif x == 2:		return "MPEG2"
+		elif x == 0xEA:		return "VC-1"
+		elif x == 0x1B:		return "H.264"
+		else:				return "%d"%x
+
+	@property
+	def Format(self):
+		x = self._Format
+		if x == 1:			return "480i"
+		elif x == 2:		return "576i"
+		elif x == 3:		return "480p"
+		elif x == 5:		return "720p"
+		elif x == 6:		return "1080p"
+		elif x == 7:		return "576p"
+		else:				return "%d"%x
+
+	@property
+	def Rate(self):
+		x = self._Rate
+		if x == 1:			return "23.976"
+		elif x == 2:		return "24.000"
+		elif x == 3:		return "25.000"
+		elif x == 4:		return "29.970"
+		elif x == 6:		return "50.000"
+		elif x == 7:		return "59.940"
+		else:				return "%d"%x
+
+	@property
+	def Aspect(self):
+		x = self._Aspect
+		if x == 2:			return "4:3"
+		elif x == 3:		return "16:9"
+		else:				return "%d"%x
+
+class Audio(_bluread.Audio):
+	"""
+	Audio stream.
+	"""
+
+	def __init__(self, Clip, Num):
+		_bluread.Audio.__init__(self, Clip, Num)
+
+	@property
+	def CodingType(self):
+		x = self._CodingType
+		if x == 3:			return "MPEG1"
+		elif x == 4:		return "MPEG2"
+		elif x == 0x80:		return "LPCM"
+		elif x == 0x81:		return "AC-3"
+		elif x == 0x82:		return "DTS"
+		elif x == 0x83:		return "TruHD"
+		elif x == 0x84:		return "AC-3+"
+		elif x == 0x85:		return "DTS-HD"
+		elif x == 0x86:		return "DTS-HD Master"
+		elif x == 0xA2:		return "DTS-HD Secondary"
+		else:				return "%d"%x
+
+	@property
+	def Format(self):
+		x = self._Format
+		if x == 1:			return "Mono"
+		elif x == 3:		return "Stereo"
+		elif x == 6:		return "Multiple"
+		elif x == 12:		return "Combo"
+		else:				return "%d"%x
+
+	@property
+	def Rate(self):
+		x = self._Rate
+		if x == 1:			return "48000"
+		elif x == 4:		return "96000"
+		elif x == 5:		return "192000"
+		elif x == 12:		return "192000 Combo"
+		elif x == 14:		return "96000 Combo"
+		else:				return "%d"%x
 
 class Subtitle(_bluread.Subtitle):
 	"""

@@ -47,8 +47,28 @@ typedef struct {
 
 	BLURAY_CLIP_INFO *info;
 
+	PyObject* VideoClass;
+	PyObject* AudioClass;
 	PyObject* SubtitleClass;
 } Clip;
+
+typedef struct {
+	PyObject_HEAD
+	int vidnum;
+
+	Clip *clip;
+
+	BLURAY_STREAM_INFO *info;
+} Video;
+
+typedef struct {
+	PyObject_HEAD
+	int audnum;
+
+	Clip *clip;
+
+	BLURAY_STREAM_INFO *info;
+} Audio;
 
 typedef struct {
 	PyObject_HEAD
@@ -64,6 +84,8 @@ static PyTypeObject BlurayType;
 static PyTypeObject TitleType;
 static PyTypeObject ChapterType;
 static PyTypeObject ClipType;
+static PyTypeObject VideoType;
+static PyTypeObject AudioType;
 static PyTypeObject SubtitleType;
 
 // --------------------------------------------------------------------------------
@@ -448,7 +470,7 @@ Title_init(Title *self, PyObject *args, PyObject *kwds)
 	int num=0;
 	static char *kwlist[] = {"BR", "Num", "ChapterClass", "ClipClass", NULL};
 
-	if (! PyArg_ParseTupleAndKeywords(args,kwds, "OiO", kwlist, &br, &num, &chapterclass, &clipclass))
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "OiOO", kwlist, &br, &num, &chapterclass, &clipclass))
 	{
 		return -1;
 	}
@@ -722,7 +744,7 @@ Chapter_init(Chapter *self, PyObject *args, PyObject *kwds)
 	self->chapternum = num;
 
 	// Get chapter information
-	self->info = &tinfo->chapters[num-1];
+	self->info = &tinfo->chapters[num];
 
 	return 0;
 }
@@ -828,6 +850,10 @@ Clip_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 		self->title = NULL;
 		self->info = NULL;
 		self->clipnum = 0;
+
+		self->VideoClass = NULL;
+		self->AudioClass = NULL;
+		self->SubtitleClass = NULL;
 	}
 
 	return (PyObject*)self;
@@ -836,11 +862,11 @@ Clip_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 Clip_init(Clip *self, PyObject *args, PyObject *kwds)
 {
-	PyObject *title=NULL, *subtitleclass=NULL, *tmp=NULL;
+	PyObject *title=NULL, *videoclass=NULL, *audioclass=NULL, *subtitleclass=NULL, *tmp=NULL;
 	int num=0;
-	static char *kwlist[] = {"Title", "Num", "SubtitleClass", NULL};
+	static char *kwlist[] = {"Title", "Num", "VideoClass", "audioClass", "SubtitleClass", NULL};
 
-	if (! PyArg_ParseTupleAndKeywords(args,kwds, "OiO", kwlist, &title, &num, &subtitleclass))
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "OiOOO", kwlist, &title, &num, &videoclass, &audioclass, &subtitleclass))
 	{
 		return -1;
 	}
@@ -868,6 +894,18 @@ Clip_init(Clip *self, PyObject *args, PyObject *kwds)
 	Py_INCREF(title);
 	Py_CLEAR(tmp);
 
+	// videoclass
+	tmp = (PyObject*)self->VideoClass;
+	self->VideoClass = videoclass;
+	Py_INCREF(videoclass);
+	Py_CLEAR(tmp);
+
+	// audioclass
+	tmp = (PyObject*)self->AudioClass;
+	self->AudioClass = audioclass;
+	Py_INCREF(audioclass);
+	Py_CLEAR(tmp);
+
 	// subtitleclass
 	tmp = (PyObject*)self->SubtitleClass;
 	self->SubtitleClass = subtitleclass;
@@ -877,7 +915,7 @@ Clip_init(Clip *self, PyObject *args, PyObject *kwds)
 	self->clipnum = num;
 
 	// Get clip information
-	self->info = &tinfo->clips[num-1];
+	self->info = &tinfo->clips[num];
 
 	return 0;
 }
@@ -914,6 +952,54 @@ Clip_getNum(Clip *self)
 }
 
 static PyObject*
+Clip_getNumberOfVideosPrimary(Clip *self)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->info->video_stream_count);
+}
+
+static PyObject*
+Clip_getNumberOfVideosSecondary(Clip *self)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->info->sec_video_stream_count);
+}
+
+static PyObject*
+Clip_getNumberOfAudiosPrimary(Clip *self)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->info->audio_stream_count);
+}
+
+static PyObject*
+Clip_getNumberOfAudiosSecondary(Clip *self)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->info->sec_audio_stream_count);
+}
+
+static PyObject*
 Clip_getNumberOfSubtitles(Clip *self)
 {
 	if (! _Bluray_getIsOpen(self->title->br))
@@ -923,6 +1009,80 @@ Clip_getNumberOfSubtitles(Clip *self)
 	}
 
 	return PyLong_FromLong((long)self->info->pg_stream_count);
+}
+
+static PyObject*
+Clip_GetVideo(Clip *self, PyObject *args, PyObject *kwds)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	int num=0;
+	static char *kwlist[] = {"Num", NULL};
+
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "i", kwlist, &num))
+	{
+		return NULL;
+	}
+
+	if (num < 0)
+	{
+		PyErr_Format(PyExc_Exception, "Video stream number (%d) must be non-negative", num);
+		return NULL;
+	}
+	if (num >= self->info->video_stream_count)
+	{
+		PyErr_Format(PyExc_Exception, "Video stream number (%d) must be non-negative but it exceeds the number (%d) of available clips", num,self->info->video_stream_count);
+		return NULL;
+	}
+
+	PyObject *a = Py_BuildValue("Oi", self, num);
+	if (a == NULL)
+	{
+		return NULL;
+	}
+
+	return PyObject_CallObject(self->VideoClass, a);
+}
+
+static PyObject*
+Clip_GetAudio(Clip *self, PyObject *args, PyObject *kwds)
+{
+	if (! _Bluray_getIsOpen(self->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	int num=0;
+	static char *kwlist[] = {"Num", NULL};
+
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "i", kwlist, &num))
+	{
+		return NULL;
+	}
+
+	if (num < 0)
+	{
+		PyErr_Format(PyExc_Exception, "Audio stream number (%d) must be non-negative", num);
+		return NULL;
+	}
+	if (num >= self->info->audio_stream_count)
+	{
+		PyErr_Format(PyExc_Exception, "Audio stream number (%d) must be non-negative but it exceeds the number (%d) of available clips", num,self->info->audio_stream_count);
+		return NULL;
+	}
+
+	PyObject *a = Py_BuildValue("Oi", self, num);
+	if (a == NULL)
+	{
+		return NULL;
+	}
+
+	return PyObject_CallObject(self->AudioClass, a);
 }
 
 static PyObject*
@@ -970,13 +1130,371 @@ static PyMemberDef Clip_members[] = {
 };
 
 static PyMethodDef Clip_methods[] = {
-	{"GetSubtitle", (PyCFunction)Clip_GetSubtitle, METH_NOARGS, "Gets subtitel (pg: presentation graphics) for this clip"},
+	{"GetVideo", (PyCFunction)Clip_GetVideo, METH_VARARGS|METH_KEYWORDS, "Gets video stream for this clip"},
+	{"GetAudio", (PyCFunction)Clip_GetAudio, METH_VARARGS|METH_KEYWORDS, "Gets audio stream for this clip"},
+	{"GetSubtitle", (PyCFunction)Clip_GetSubtitle, METH_VARARGS|METH_KEYWORDS, "Gets subtitle (pg: presentation graphics) for this clip"},
 	{NULL}
 };
 
 static PyGetSetDef Clip_getseters[] = {
 	{"Num", (getter)Clip_getNum, NULL, "Get the clip number of this clip", NULL},
+	{"NumberOfVideosPrimary", (getter)Clip_getNumberOfVideosPrimary, NULL, "Get the number of primary video streams in this clip", NULL},
+	{"NumberOfVideosSecondary", (getter)Clip_getNumberOfVideosSecondary, NULL, "Get the number of secondary video streams in this clip", NULL},
+	{"NumberOfAudiosPrimary", (getter)Clip_getNumberOfAudiosPrimary, NULL, "Get the number of primary audio streams in this clip", NULL},
+	{"NumberOfAudiosSecondary", (getter)Clip_getNumberOfAudiosSecondary, NULL, "Get the number of secondary audio streams in this clip", NULL},
 	{"NumberOfSubtitles", (getter)Clip_getNumberOfSubtitles, NULL, "Get the number of subtitles (pg: presentation graphics) in this clip", NULL},
+	{NULL}
+};
+
+// --------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------
+// Administrative functions for Video
+
+static PyObject*
+Video_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+	Video *self;
+
+	self = (Video*)type->tp_alloc(type, 0);
+	if (self)
+	{
+		self->clip = NULL;
+		self->info = NULL;
+		self->vidnum = 0;
+	}
+
+	return (PyObject*)self;
+}
+
+static int
+Video_init(Video *self, PyObject *args, PyObject *kwds)
+{
+	PyObject *clip=NULL, *tmp=NULL;
+	int num=0;
+	static char *kwlist[] = {"Clip", "Num", NULL};
+
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "Oi", kwlist, &clip, &num))
+	{
+		return -1;
+	}
+
+	Clip *c = (Clip*)clip;
+
+
+	if (num < 0)
+	{
+		PyErr_Format(PyExc_Exception, "Video number (%d) must be non-negative", num);
+		return -1;
+	}
+	if (num >= c->info->video_stream_count)
+	{
+		PyErr_Format(PyExc_Exception, "Video number (%d) must be non-negative but it exceeds the number (%d) of available clips", num,c->info->video_stream_count);
+		return -1;
+	}
+
+	// clip
+	tmp = (PyObject*)self->clip;
+	self->clip = c;
+	Py_INCREF(clip);
+	Py_CLEAR(tmp);
+
+	self->vidnum = num;
+
+	// Get video information
+	self->info = &c->info->video_streams[num];
+
+	return 0;
+}
+
+static void
+Video_dealloc(Video *self)
+{
+	if (self->info)
+	{
+		// Nothing to do, it's a part of title info
+	}
+	self->info = NULL;
+
+	self->vidnum = 0;
+	Py_CLEAR(self->clip);
+
+	Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+// --------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------
+// Interface stuff for Video
+
+static PyObject*
+Video_getNum(Video *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->vidnum);
+}
+
+static PyObject*
+Video_getLanguage(Video *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	char lang[5];
+	strncpy(lang, (char*)self->info->lang, 4);
+	lang[4] = '\0';
+
+	return PyUnicode_FromString(lang);
+}
+
+static PyObject*
+Video_getCodingType(Video *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->coding_type);
+}
+
+static PyObject*
+Video_getFormat(Video *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->format);
+}
+
+static PyObject*
+Video_getRate(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->rate);
+}
+
+static PyObject*
+Video_getAspect(Video *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->aspect);
+}
+
+
+static PyMemberDef Video_members[] = {
+	{"_num", T_OBJECT_EX, offsetof(Video, vidnum), 0, "Video number"},
+	{NULL}
+};
+
+static PyMethodDef Video_methods[] = {
+	//{"Open", (PyCFunction)Video_Open, METH_NOARGS, "Opens the device for reading"},
+	{NULL}
+};
+
+static PyGetSetDef Video_getseters[] = {
+	{"Num", (getter)Video_getNum, NULL, "Get the video number of this stream", NULL},
+	{"_CodingType", (getter)Video_getCodingType, NULL, "Get the coding type of this stream", NULL},
+	{"_Format", (getter)Video_getFormat, NULL, "Get the format of this stream", NULL},
+	{"_Rate", (getter)Video_getRate, NULL, "Get the rate of this stream", NULL},
+	{"_Aspect", (getter)Video_getAspect, NULL, "Get the aspect of this stream", NULL},
+	{"Language", (getter)Video_getLanguage, NULL, "Gets the language code of the video stream", NULL},
+	{NULL}
+};
+
+// --------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------
+// Administrative functions for Audio
+
+static PyObject*
+Audio_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+	Audio *self;
+
+	self = (Audio*)type->tp_alloc(type, 0);
+	if (self)
+	{
+		self->clip = NULL;
+		self->info = NULL;
+		self->audnum = 0;
+	}
+
+	return (PyObject*)self;
+}
+
+static int
+Audio_init(Audio *self, PyObject *args, PyObject *kwds)
+{
+	PyObject *clip=NULL, *tmp=NULL;
+	int num=0;
+	static char *kwlist[] = {"Clip", "Num", NULL};
+
+	if (! PyArg_ParseTupleAndKeywords(args,kwds, "Oi", kwlist, &clip, &num))
+	{
+		return -1;
+	}
+
+	Clip *c = (Clip*)clip;
+
+
+	if (num < 0)
+	{
+		PyErr_Format(PyExc_Exception, "Audio number (%d) must be non-negative", num);
+		return -1;
+	}
+	if (num >= c->info->audio_stream_count)
+	{
+		PyErr_Format(PyExc_Exception, "Audio number (%d) must be non-negative but it exceeds the number (%d) of available clips", num,c->info->audio_stream_count);
+		return -1;
+	}
+
+	// clip
+	tmp = (PyObject*)self->clip;
+	self->clip = c;
+	Py_INCREF(clip);
+	Py_CLEAR(tmp);
+
+	self->audnum = num;
+
+	// Get subtitle information
+	self->info = &c->info->audio_streams[num];
+
+	return 0;
+}
+
+static void
+Audio_dealloc(Audio *self)
+{
+	if (self->info)
+	{
+		// Nothing to do, it's a part of title info
+	}
+	self->info = NULL;
+
+	self->audnum = 0;
+	Py_CLEAR(self->clip);
+
+	Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+// --------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------
+// Interface stuff for Audio
+
+static PyObject*
+Audio_getNum(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->audnum);
+}
+
+static PyObject*
+Audio_getCodingType(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->coding_type);
+}
+
+static PyObject*
+Audio_getFormat(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->format);
+}
+
+static PyObject*
+Audio_getRate(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->rate);
+}
+
+static PyObject*
+Audio_getAspect(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->aspect);
+}
+
+static PyObject*
+Audio_getLanguage(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	char lang[5];
+	strncpy(lang, (char*)self->info->lang, 4);
+	lang[4] = '\0';
+
+	return PyUnicode_FromString(lang);
+}
+
+
+static PyMemberDef Audio_members[] = {
+	{"_num", T_OBJECT_EX, offsetof(Audio, audnum), 0, "Audio number"},
+	{NULL}
+};
+
+static PyMethodDef Audio_methods[] = {
+	//{"Open", (PyCFunction)Audio_Open, METH_NOARGS, "Opens the device for reading"},
+	{NULL}
+};
+
+static PyGetSetDef Audio_getseters[] = {
+	{"Num", (getter)Audio_getNum, NULL, "Get the audio number of this stream", NULL},
+	{"_CodingType", (getter)Audio_getCodingType, NULL, "Get the coding type of this stream", NULL},
+	{"_Format", (getter)Audio_getFormat, NULL, "Get the format of this stream", NULL},
+	{"_Rate", (getter)Audio_getRate, NULL, "Get the rate of this stream", NULL},
+	{"_Aspect", (getter)Audio_getAspect, NULL, "Get the aspect of this stream", NULL},
+	{"Language", (getter)Audio_getLanguage, NULL, "Gets the language code of the audio stream", NULL},
 	{NULL}
 };
 
@@ -1035,7 +1553,7 @@ Subtitle_init(Subtitle *self, PyObject *args, PyObject *kwds)
 	self->pgnum = num;
 
 	// Get subtitle information
-	self->info = &c->info->pg_streams[num-1];
+	self->info = &c->info->pg_streams[num];
 
 	return 0;
 }
@@ -1072,6 +1590,54 @@ Subtitle_getNum(Subtitle *self)
 }
 
 static PyObject*
+Subtitle_getCodingType(Subtitle *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->coding_type);
+}
+
+static PyObject*
+Subtitle_getFormat(Subtitle *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->format);
+}
+
+static PyObject*
+Subtitle_getRate(Audio *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->rate);
+}
+
+static PyObject*
+Subtitle_getAspect(Subtitle *self)
+{
+	if (! _Bluray_getIsOpen(self->clip->title->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong(self->info->aspect);
+}
+
+static PyObject*
 Subtitle_getLanguage(Subtitle *self)
 {
 	if (! _Bluray_getIsOpen(self->clip->title->br))
@@ -1100,6 +1666,10 @@ static PyMethodDef Subtitle_methods[] = {
 
 static PyGetSetDef Subtitle_getseters[] = {
 	{"Num", (getter)Subtitle_getNum, NULL, "Get the subtitle number of this pg (presentation graphics) stream", NULL},
+	{"_CodingType", (getter)Subtitle_getCodingType, NULL, "Get the coding type of this stream", NULL},
+	{"_Format", (getter)Subtitle_getFormat, NULL, "Get the format of this stream", NULL},
+	{"_Rate", (getter)Subtitle_getRate, NULL, "Get the rate of this stream", NULL},
+	{"_Aspect", (getter)Subtitle_getAspect, NULL, "Get the aspect of this stream", NULL},
 	{"Language", (getter)Subtitle_getLanguage, NULL, "Gets the language code of the subtitle", NULL},
 	{NULL}
 };
@@ -1272,6 +1842,88 @@ static PyTypeObject ClipType = {
 	Clip_new,                  /* tp_new */
 };
 
+static PyTypeObject VideoType = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	"_bluread.Video",          /* tp_name */
+	sizeof(Video),             /* tp_basicsize */
+	0,                         /* tp_itemsize */
+	(destructor)Video_dealloc, /* tp_dealloc */
+	0,                         /* tp_print */
+	0,                         /* tp_getattr */
+	0,                         /* tp_setattr */
+	0,                         /* tp_reserved */
+	0,                         /* tp_repr */
+	0,                         /* tp_as_number */
+	0,                         /* tp_as_sequence */
+	0,                         /* tp_as_mapping */
+	0,                         /* tp_hash  */
+	0,                         /* tp_call */
+	0,                         /* tp_str */
+	0,                         /* tp_getattro */
+	0,                         /* tp_setattro */
+	0,                         /* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE,        /* tp_flags */
+	"Represents a BLURAY from libbluray",          /* tp_doc */
+	0,                         /* tp_traverse */
+	0,                         /* tp_clear */
+	0,                         /* tp_richcompare */
+	0,                         /* tp_weaklistoffset */
+	0,                         /* tp_iter */
+	0,                         /* tp_iternext */
+	Video_methods,             /* tp_methods */
+	Video_members,             /* tp_members */
+	Video_getseters,           /* tp_getset */
+	0,                         /* tp_base */
+	0,                         /* tp_dict */
+	0,                         /* tp_descr_get */
+	0,                         /* tp_descr_set */
+	0,                         /* tp_dictoffset */
+	(initproc)Video_init,      /* tp_init */
+	0,                         /* tp_alloc */
+	Video_new,                 /* tp_new */
+};
+
+static PyTypeObject AudioType = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	"_bluread.Audio",          /* tp_name */
+	sizeof(Audio),             /* tp_basicsize */
+	0,                         /* tp_itemsize */
+	(destructor)Audio_dealloc, /* tp_dealloc */
+	0,                         /* tp_print */
+	0,                         /* tp_getattr */
+	0,                         /* tp_setattr */
+	0,                         /* tp_reserved */
+	0,                         /* tp_repr */
+	0,                         /* tp_as_number */
+	0,                         /* tp_as_sequence */
+	0,                         /* tp_as_mapping */
+	0,                         /* tp_hash  */
+	0,                         /* tp_call */
+	0,                         /* tp_str */
+	0,                         /* tp_getattro */
+	0,                         /* tp_setattro */
+	0,                         /* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE,        /* tp_flags */
+	"Represents a BLURAY from libbluray",          /* tp_doc */
+	0,                         /* tp_traverse */
+	0,                         /* tp_clear */
+	0,                         /* tp_richcompare */
+	0,                         /* tp_weaklistoffset */
+	0,                         /* tp_iter */
+	0,                         /* tp_iternext */
+	Audio_methods,             /* tp_methods */
+	Audio_members,             /* tp_members */
+	Audio_getseters,           /* tp_getset */
+	0,                         /* tp_base */
+	0,                         /* tp_dict */
+	0,                         /* tp_descr_get */
+	0,                         /* tp_descr_set */
+	0,                         /* tp_dictoffset */
+	(initproc)Audio_init,      /* tp_init */
+	0,                         /* tp_alloc */
+	Audio_new,                 /* tp_new */
+};
+
 static PyTypeObject SubtitleType = {
 	PyVarObject_HEAD_INIT(NULL, 0)
 	"_bluread.Subtitle",       /* tp_name */
@@ -1337,6 +1989,8 @@ PyInit__bluread(void)
 	if(PyType_Ready(&TitleType) < 0) { return NULL; }
 	if(PyType_Ready(&ChapterType) < 0) { return NULL; }
 	if(PyType_Ready(&ClipType) < 0) { return NULL; }
+	if(PyType_Ready(&VideoType) < 0) { return NULL; }
+	if(PyType_Ready(&AudioType) < 0) { return NULL; }
 	if(PyType_Ready(&SubtitleType) < 0) { return NULL; }
 
 	// Create the module defined in the struct above
@@ -1356,6 +2010,8 @@ PyInit__bluread(void)
 	PyModule_AddObject(m, "Title", (PyObject*)&TitleType);
 	PyModule_AddObject(m, "Chapter", (PyObject*)&ChapterType);
 	PyModule_AddObject(m, "Clip", (PyObject*)&ClipType);
+	PyModule_AddObject(m, "Video", (PyObject*)&VideoType);
+	PyModule_AddObject(m, "Audio", (PyObject*)&AudioType);
 	PyModule_AddObject(m, "Subtitle", (PyObject*)&SubtitleType);
 	PyModule_AddStringConstant(m, "Version", v);
 
