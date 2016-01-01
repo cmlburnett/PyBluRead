@@ -590,6 +590,18 @@ Title_getNumberOfClips(Title *self)
 	return PyLong_FromLong((long)self->info->clip_count);
 }
 
+static PyObject*
+Title_getPlaylistNumber(Title *self)
+{
+	if (! _Bluray_getIsOpen(self->br))
+	{
+		PyErr_SetString(PyExc_Exception, "Device not open, must Open() it first before accessing it");
+		return NULL;
+	}
+
+	return PyLong_FromLong((long)self->info->playlist);
+}
+
 
 static PyObject*
 Title_GetChapter(Title *self, PyObject *args, PyObject *kwds)
@@ -683,6 +695,7 @@ static PyGetSetDef Title_getseters[] = {
 	{"NumberOfAngles", (getter)Title_getNumberOfAngles, NULL, "Gets the number of angles in this title", NULL},
 	{"NumberOfChapters", (getter)Title_getNumberOfChapters, NULL, "Gets the number of chapters in this title", NULL},
 	{"NumberOfClips", (getter)Title_getNumberOfClips, NULL, "Gets the number of clips in this title", NULL},
+	{"PlaylistNumber", (getter)Title_getPlaylistNumber, NULL, "Gets the playlist as a number", NULL},
 	{NULL}
 };
 

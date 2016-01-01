@@ -70,6 +70,13 @@ class Title(_bluread.Title):
 	def LengthFancy(self):
 		return TicksToFancy(self.Length)
 
+	@property
+	def Playlist(self):
+		"""
+		Gets the playlist as an MPLS file name.
+		"""
+		return "%05d.mpls" % self.PlaylistNumber
+
 class Chapter(_bluread.Chapter):
 	"""
 	Represents a chaper which belongs to a title.
