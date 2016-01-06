@@ -28,6 +28,7 @@ setup(
 	url = "https://github.com/cmlburnett/PyDvdRead",
 	packages = ['bluread'],
 	ext_modules = [bluray],
+	requires = ['crudexml'],
 	classifiers = [
 		'Programming Language :: Python :: 3.4'
 	]
