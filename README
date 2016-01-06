@@ -44,6 +44,42 @@ Use Python's online help to get the documentation from the classes.
 
 A simple script is needed to parse the structure of a BR:
 
+	import bluread
 
+	with bluread.Bluray("/dev/sr0") as b:
+		b.Open()
 
+		print("Volume ID: %s" % b.VolumeId)
+		print("Org ID: %s" % b.OrgId)
+		print("Number of titles on disc: %d" % b.NumberOfTitles)
+
+		for i in range(b.NumberOfTitles):
+			t = b.GetTitle(i)
+
+			# Filter out special features, etc.
+			if t.Length < 300000000: continue
+
+			print("Title %d has %d angles, %d chapters, %d clips, and runs for %s" % (i, t.NumberOfAngles, t.NumberOfChapters, t.NumberOfClips, t.LengthFancy))
+
+Output:
+
+	$ python3 foo.py
+	bdplus_config.c:255: VM configuration not found
+	bdplus.c:169: bdplus_init() failed! (0x24044e0)
+	dec.c:239: bdplus_init() failed
+	Volume ID: LIVE_FREE_DIE_HARD
+	Org ID: 446973632
+	Number of titles on disc: 67
+	Title 0 has 1 angles, 37 chapters, 1 clips, and runs for 02:08:42.715
+	Title 60 has 1 angles, 11 chapters, 11 clips, and runs for 01:37:15.729
+
+--------------
+:Organization:
+--------------
+
+This module contains two parts:
+1) C implementation to wrap libbluray and provide basic PyObject types for use within Python
+2) Python implementation to wrap PyObject types created in C
+
+The C objects are defined within the /src/ directory and the Python objects in the /bluread/ directory. The C objects are defined in the _bluread module and the Python objects in the bluread module.
 
