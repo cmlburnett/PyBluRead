@@ -2,7 +2,7 @@ import sys
 from distutils.core import setup, Extension
 
 majv = 1
-minv = 0
+minv = 1
 
 if sys.version_info < (3,):
 	print("This library is only tested with Python 3.4")
@@ -25,7 +25,8 @@ setup(
 	description = 'Python wrapper for libbluray',
 	author = 'Colin ML Burnett',
 	author_email = 'cmlburnett@gmail.com',
-	url = "https://github.com/cmlburnett/PyDvdRead",
+	url = "https://github.com/cmlburnett/PyBluRead",
+	download_url = "https://pypi.python.org/pypi/bluread",
 	packages = ['bluread'],
 	ext_modules = [bluray],
 	requires = ['crudexml'],
