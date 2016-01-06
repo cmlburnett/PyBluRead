@@ -6,4 +6,5 @@
 *.swm
 
 build/
+dist/
 .AppleDouble/
