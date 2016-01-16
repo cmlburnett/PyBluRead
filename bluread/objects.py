@@ -9,7 +9,7 @@ import os
 import subprocess
 
 
-def TicksToFancy(l):
+def TicksToTuple(l):
 	"""
 	Convert 64-bit bluray ticks into clock time as a 4-tuple of (hours, minutes, seconds, milliseconds)
 	There is a conversion constant of 90000 that I am unable to find good documentation for.
