@@ -28,7 +28,7 @@ def BRToXML(device, KEYDB, pretty=True):
 		for tnum in range(b.NumberOfTitles):
 			t = b.GetTitle(tnum)
 
-			title = titles.AddChild( node('title', idx=tnum) )
+			title = titles.AddChild( node('title', idx=tnum, playlist=t.Playlist) )
 			title.AddChild( tnode('length', t.Length, fancy=t.LengthFancy) )
 
 			angles = title.AddChild( node('angles', num=t.NumberOfAngles) )

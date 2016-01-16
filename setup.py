@@ -2,7 +2,7 @@ import sys
 from distutils.core import setup, Extension
 
 majv = 1
-minv = 1
+minv = 2
 
 if sys.version_info < (3,):
 	print("This library is only tested with Python 3.4")
