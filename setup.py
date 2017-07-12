@@ -1,11 +1,11 @@
 import sys
-from distutils.core import setup, Extension
+from setuptools import setup,Extension
 
 majv = 1
-minv = 2
+minv = 4
 
 if sys.version_info < (3,):
-	print("This library is only tested with Python 3.4")
+	print("This library is only tested with Python 3.4/3.5")
 	sys.exit(1)
 
 bluray = Extension(
@@ -31,7 +31,8 @@ setup(
 	ext_modules = [bluray],
 	requires = ['crudexml'],
 	classifiers = [
-		'Programming Language :: Python :: 3.4'
+		'Programming Language :: Python :: 3.4',
+		'Programming Language :: Python :: 3.5'
 	]
 )
 
