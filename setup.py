@@ -2,10 +2,10 @@ import sys
 from setuptools import setup,Extension
 
 majv = 1
-minv = 4
+minv = 5
 
 if sys.version_info < (3,):
-	print("This library is only tested with Python 3.4/3.5")
+	print("This library is only tested with Python 3.7")
 	sys.exit(1)
 
 bluray = Extension(
@@ -14,8 +14,9 @@ bluray = Extension(
 		('MAJOR_VERSION', str(majv)),
 		('MINOR_VERSION', str(minv))
 	],
-	include_dirs = ['/usr/include/libbluray'],
+	include_dirs = ['deps/include/libbluray'],
 	libraries = ['bluray'],
+	library_dirs=['deps/lib/x64'],
 	sources = ['src/bluread.c']
 )
 
@@ -31,8 +32,7 @@ setup(
 	ext_modules = [bluray],
 	requires = ['crudexml'],
 	classifiers = [
-		'Programming Language :: Python :: 3.4',
-		'Programming Language :: Python :: 3.5'
+		'Programming Language :: Python :: 3.7'
 	]
 )
 

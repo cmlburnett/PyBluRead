@@ -8,3 +8,6 @@
 build/
 dist/
 .AppleDouble/
+.idea/
+bluread.egg-info/
+deps/

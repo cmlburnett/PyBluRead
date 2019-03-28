@@ -12,6 +12,18 @@ This means that execution speed will depend on disc access, which can be slow. J
 
 	python3 setup.py build
 	python3 setup.py install
+	
+---------
+:Windows:
+---------
+
+* Install the build tools for your version of Python - https://wiki.python.org/moin/WindowsCompilers
+* Download and extract prebuilt static binaries of libbluray into deps/ - https://github.com/ShiftMediaProject/libbluray/releases 
+* Edit the setup.py
+
+	include_dirs = ['deps/include/libbluray'],
+	libraries = ['bluray'],
+	library_dirs=['deps/lib/x64'],
 
 ---------------
 :Documentation:
