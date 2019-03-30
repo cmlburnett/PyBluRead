@@ -59,7 +59,7 @@ A simple script is needed to parse the structure of a BR:
 	import bluread
 
 	with bluread.Bluray("/dev/sr0") as b:
-		b.Open()
+		b.Open(min_duration=30)
 
 		print("Volume ID: %s" % b.VolumeId)
 		print("Org ID: %s" % b.OrgId)

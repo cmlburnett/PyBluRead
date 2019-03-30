@@ -408,6 +408,7 @@ class Video(_bluread.Video):
 		elif x == 2:		return "MPEG2"
 		elif x == 0xEA:		return "VC-1"
 		elif x == 0x1B:		return "H.264"
+		elif x == 0x24:		return "HEVC"
 		else:				return "%d"%x
 
 	@property
@@ -416,9 +417,11 @@ class Video(_bluread.Video):
 		if x == 1:			return "480i"
 		elif x == 2:		return "576i"
 		elif x == 3:		return "480p"
+		elif x == 4:		return "1080i"
 		elif x == 5:		return "720p"
 		elif x == 6:		return "1080p"
 		elif x == 7:		return "576p"
+		elif x == 8:		return "2160p"
 		else:				return "%d"%x
 
 	@property
