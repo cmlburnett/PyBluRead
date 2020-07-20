@@ -297,7 +297,7 @@ Bluray_getIsOpen(Bluray *self)
 }
 
 static PyObject*
-Bluray_Open(Bluray *self)
+Bluray_Open(Bluray *self, PyObject *args, PyObject *kwargs)
 {
 	if (_Bluray_getIsOpen(self))
 	{
@@ -330,8 +330,15 @@ Bluray_Open(Bluray *self)
 		goto error;
 	}
 
-	// No flags (0) and no minimum title time (0)
-	self->numtitles = bd_get_titles(self->BR, 0, 0);
+	// defaults to No flags (0) and no minimum title time (0)
+    int flags = 0;
+    int minTime = 0;
+    static char *kwlist[] = {"flags", "min_duration", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ii", kwlist, &flags, &minTime)) {
+        return NULL;
+	}
+
+	self->numtitles = bd_get_titles(self->BR, flags, minTime);
 	if (self->numtitles <= 0)
 	{
 		PyErr_SetString(PyExc_Exception, "Failed to get titles");
@@ -422,7 +429,7 @@ static PyMemberDef Bluray_members[] = {
 };
 
 static PyMethodDef Bluray_methods[] = {
-	{"Open", (PyCFunction)Bluray_Open, METH_NOARGS, "Opens the device for reading"},
+	{"Open", (PyCFunction)Bluray_Open, METH_VARARGS|METH_KEYWORDS, "Opens the device for reading"},
 	{"Close", (PyCFunction)Bluray_Close, METH_NOARGS, "Closes the device"},
 	{"GetTitle", (PyCFunction)Bluray_GetTitle, METH_VARARGS|METH_KEYWORDS, "Gets title information"},
 	{NULL}

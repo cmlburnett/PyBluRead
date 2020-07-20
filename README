@@ -12,6 +12,18 @@ This means that execution speed will depend on disc access, which can be slow. J
 
 	python3 setup.py build
 	python3 setup.py install
+	
+---------
+:Windows:
+---------
+
+* Install the build tools for your version of Python - https://wiki.python.org/moin/WindowsCompilers
+* Download and extract prebuilt static binaries of libbluray into deps/ - https://github.com/ShiftMediaProject/libbluray/releases 
+* Edit the setup.py
+
+	include_dirs = ['deps/include/libbluray'],
+	libraries = ['bluray'],
+	library_dirs=['deps/lib/x64'],
 
 ---------------
 :Documentation:
@@ -47,7 +59,7 @@ A simple script is needed to parse the structure of a BR:
 	import bluread
 
 	with bluread.Bluray("/dev/sr0") as b:
-		b.Open()
+		b.Open(min_duration=30)
 
 		print("Volume ID: %s" % b.VolumeId)
 		print("Org ID: %s" % b.OrgId)
