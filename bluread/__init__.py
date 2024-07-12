@@ -7,11 +7,11 @@ Not everything in libbluray is wrapped by this library.
 
 import _bluread
 
-__all__ = ["Bluray", "Title", "Chapter", "Clip", "Video", "Audio", "Subtitle", "Version", "BRToXML"]
+__all__ = ["Bluray", "Title", "Chapter", "Clip", "Video", "Audio", "Subtitle", "Version", "BRToXML", "Disc"]
 
 Version = _bluread.Version
 
-from .objects import Bluray, Title, Chapter, Clip, Video, Audio, Subtitle
+from .objects import Bluray, Title, Chapter, Clip, Video, Audio, Subtitle, Disc
 
 from crudexml import node,tnode
 
